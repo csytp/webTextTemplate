@@ -1,0 +1,105 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSoundWebTemplate Minimal</title>
+</head>
+
+<script type="text/javascript">
+    // csound.js is the Csound WASM module
+    const csoundjs = "./csound.js";
+    // csound is the Csound engine object (null as we start)
+    let csound = null;
+
+    // instrument on/off state
+    let isOn = false;
+
+    // this is the JS function to start Csound
+    // and resume performance if needed
+    async function start() {
+        // if the Csound object is not initialised
+        if (csound == null) {
+            // import the Csound method from csound.js
+            const { Csound } = await import(csoundjs);
+            // create a Csound engine object inside the context actx
+            csound = await Csound();
+            // CSD file name
+            const csd = getCsd();
+            // compile the code in the CSD file
+            await csound.compileCsdText(csd)
+            // handle Csound messages
+            await csound.on("message", handleMessage);
+            // start the engine
+            await csound.start();
+            isOn = true;
+        }
+
+    }
+
+    let count = 0;
+    function handleMessage(message) {
+        // get the display element (called console in the page)
+        let element = document.getElementById('consoleLog');
+        // add the message to HTML content (plus a newline)
+        element.innerHTML += message + '\n';
+        // focus on bottom, new messages make the display scroll down
+        element.scrollTop = 99999;
+        // clear display every 1000 lines
+        if (count == 1000) {
+            count = 0;
+            element.innerHTML == "";
+        }
+        count += 1;
+    };
+
+    // Copy file to local filesystem
+    async function copyUrlToLocal(src, dest) {
+        // fetch the file
+        let srcfile = await fetch(src)
+        // get the file data as an array
+        let dat = await srcfile.arrayBuffer();
+        // write the data as a new file in the filesystem
+        await csound.fs.writeFile(dest, new Uint8Array(dat));
+    }
+
+    // toggle performance on/off
+    async function kill() {
+        if (csound != null) {
+            
+            csound = null;
+        }
+    }
+
+    // Gets csd
+    function getCsd() {
+        const inputValue = document.getElementById('csd').value;
+        console.log(inputValue);
+        return inputValue;
+    }
+
+
+</script>
+
+<body>
+
+    <!-- Website -->
+
+    <h1>Csound Web Template</h1>
+    <div>
+        <div>
+            <h2>Write your Csd</h2>
+            <textarea class="console" id="csd" rows="20" cols="100"></textarea>
+            <br>
+            <input type="button" id="play" onclick="start()" value="Start">
+            <input type="button" id="pause" onclick="kill()" value="Clean on Stop">
+
+        </div>
+        <div>
+            <h2>Console Log</h2>
+            <textarea class="console" id="consoleLog" readonly rows="20" cols="100"></textarea>
+        </div>
+    </div>
+</body>
+
+</html>
